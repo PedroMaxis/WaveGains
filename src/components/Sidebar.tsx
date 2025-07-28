@@ -2,7 +2,6 @@ import {
   LayoutDashboard, 
   Calendar, 
   Dumbbell, 
-  BarChart3, 
   Calculator, 
   Settings,
   ChevronLeft,

@@ -1,4 +1,4 @@
-import type { PeriodizationProgram, Phase, ExperienceLevel } from '../types';
+import type { PeriodizationProgram, ExperienceLevel } from '../types';
 
 // Linear Periodization Program
 export const linearProgram: PeriodizationProgram = {

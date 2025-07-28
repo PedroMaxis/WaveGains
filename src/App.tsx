@@ -57,7 +57,6 @@ function App() {
         <main className="flex-1 p-6">
           {state.currentView === 'dashboard' && (
             <Dashboard 
-              user={state.user}
               currentProgram={state.currentProgram}
               onViewChange={updateView}
             />

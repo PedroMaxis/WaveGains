@@ -9,16 +9,15 @@ import {
   Play
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import type { UserProfile, CurrentProgram, AppState } from '../types';
+import type { CurrentProgram, AppState } from '../types';
 import { getProgramById } from '../data/programs';
 
 interface DashboardProps {
-  user: UserProfile;
   currentProgram: CurrentProgram | null;
   onViewChange: (view: AppState['currentView']) => void;
 }
 
-const Dashboard = ({ user, currentProgram, onViewChange }: DashboardProps) => {
+const Dashboard = ({ currentProgram, onViewChange }: DashboardProps) => {
   const program = currentProgram ? getProgramById(currentProgram.programId) : null;
   
   // Mock data for charts
@@ -207,7 +206,7 @@ const Dashboard = ({ user, currentProgram, onViewChange }: DashboardProps) => {
                 Fases do Programa
               </h4>
               <div className="grid grid-cols-1 gap-3">
-                {program.phases.map((phase, index) => (
+                {program.phases.map((phase) => (
                   <div
                     key={phase.id}
                     className={`p-3 rounded-lg border-l-4 ${
