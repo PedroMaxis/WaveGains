@@ -95,8 +95,47 @@ export interface CurrentProgram {
   currentMesocycle: number;
   startDate: Date;
   workouts: Workout[];
+  /** Treinos concluídos, do mais antigo para o mais recente */
+  history: CompletedWorkout[];
   personalRecords: PersonalRecord[];
   progressMetrics: ProgressMetrics;
+}
+
+// Execução de treinos
+export interface LoggedSet {
+  weight: number;
+  reps: number;
+  done: boolean;
+}
+
+export interface LoggedExercise {
+  exerciseId: string;
+  name: string;
+  targetSets: number;
+  targetReps: string;
+  /** 's' quando o exercício é medido em segundos (ex.: prancha) */
+  unit?: 's';
+  restTime: number; // segundos
+  sets: LoggedSet[];
+}
+
+export interface CompletedWorkout {
+  id: string;
+  name: string;
+  date: Date;
+  week: number;
+  phaseId: string;
+  durationMin: number;
+  volume: number; // kg (soma de carga x repetições)
+  exercises: LoggedExercise[];
+}
+
+export interface WorkoutDraft {
+  name: string;
+  startedAt: Date;
+  week: number;
+  phaseId: string;
+  exercises: LoggedExercise[];
 }
 
 export interface PersonalRecord {

@@ -1,16 +1,28 @@
 import { useState } from 'react';
 import { ChevronRight, ChevronLeft, Check } from 'lucide-react';
 import { onboardingQuestions } from '../data/quiz';
-import type { OnboardingData, QuizAnswer } from '../types';
+import type { OnboardingData, QuizAnswer, QuizQuestion } from '../types';
 
 interface OnboardingProps {
   onComplete: (data: OnboardingData) => void;
 }
 
+/** Valor inicial de cada pergunta (o slider de peso começa em um valor realista) */
+const defaultAnswerFor = (question: QuizQuestion): string | string[] | number => {
+  if (question.type === 'range') {
+    const min = question.min ?? 0;
+    const max = question.max ?? 100;
+    return Math.min(max, Math.max(min, 70));
+  }
+  return '';
+};
+
 const Onboarding = ({ onComplete }: OnboardingProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
-  const [currentAnswer, setCurrentAnswer] = useState<string | string[] | number>('');
+  const [currentAnswer, setCurrentAnswer] = useState<string | string[] | number>(() =>
+    defaultAnswerFor(onboardingQuestions[0])
+  );
 
   const currentQuestion = onboardingQuestions[currentStep];
   const isLastStep = currentStep === onboardingQuestions.length - 1;
@@ -41,7 +53,7 @@ const Onboarding = ({ onComplete }: OnboardingProps) => {
       
       // Load existing answer if returning to this question
       const existingAnswer = updatedAnswers.find(a => a.questionId === onboardingQuestions[currentStep + 1]?.id);
-      setCurrentAnswer(existingAnswer?.answer || '');
+      setCurrentAnswer(existingAnswer?.answer ?? defaultAnswerFor(onboardingQuestions[currentStep + 1]));
     }
   };
 
@@ -51,7 +63,7 @@ const Onboarding = ({ onComplete }: OnboardingProps) => {
       
       // Load existing answer
       const existingAnswer = answers.find(a => a.questionId === onboardingQuestions[currentStep - 1].id);
-      setCurrentAnswer(existingAnswer?.answer || '');
+      setCurrentAnswer(existingAnswer?.answer ?? defaultAnswerFor(onboardingQuestions[currentStep - 1]));
     }
   };
 
@@ -179,7 +191,7 @@ const Onboarding = ({ onComplete }: OnboardingProps) => {
                   min={currentQuestion.min}
                   max={currentQuestion.max}
                   step="1"
-                  value={currentAnswer as number || currentQuestion.min}
+                  value={(currentAnswer as number) || currentQuestion.min}
                   onChange={(e) => handleAnswerChange(parseInt(e.target.value))}
                   className="w-full h-2 bg-gray-200 dark:bg-dark-700 rounded-lg appearance-none cursor-pointer slider"
                 />

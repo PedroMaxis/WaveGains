@@ -1,10 +1,18 @@
 import type { OneRMResult, RPEConversion, VolumeCalculation } from '../types';
 
-// 1RM Calculation formulas
-export const calculateOneRM = (weight: number, reps: number, formula: 'epley' | 'brzycki' | 'lombardi' | 'mayhew' = 'epley'): OneRMResult => {
+/** Arredonda para o múltiplo de 2,5 kg mais próximo (anilhas comuns) */
+const roundToPlate = (value: number): number => Math.round(value / 2.5) * 2.5;
+
+// Fórmulas de estimativa de 1RM (Epley, Brzycki, Lombardi, Mayhew)
+export const calculateOneRM = (weight: number, repsInput: number, formula: 'epley' | 'brzycki' | 'lombardi' | 'mayhew' = 'epley'): OneRMResult => {
+  // As fórmulas só fazem sentido entre 1 e ~36 repetições (Brzycki divide por zero em 37)
+  const reps = Math.max(1, Math.min(repsInput, 36));
   let estimated1RM: number;
-  
-  switch (formula) {
+
+  // Uma repetição máxima já é o próprio 1RM; as fórmulas só servem para estimar a partir de 2+ reps
+  if (reps === 1) {
+    estimated1RM = weight;
+  } else switch (formula) {
     case 'epley':
       estimated1RM = weight * (1 + reps / 30);
       break;
@@ -24,11 +32,11 @@ export const calculateOneRM = (weight: number, reps: number, formula: 'epley' | 
   // Generate percentage table
   const percentages: { [key: number]: number } = {};
   for (let i = 50; i <= 100; i += 5) {
-    percentages[i] = Math.round((estimated1RM * i / 100) * 2.5) / 2.5; // Round to nearest 2.5kg
+    percentages[i] = roundToPlate((estimated1RM * i) / 100);
   }
   
   return {
-    estimated1RM: Math.round(estimated1RM * 2.5) / 2.5,
+    estimated1RM: roundToPlate(estimated1RM),
     formula,
     percentages
   };

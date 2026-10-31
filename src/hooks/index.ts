@@ -1,20 +1,48 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { UserProfile, CurrentProgram, AppState, OnboardingData } from '../types';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { UserProfile, CurrentProgram, AppState, OnboardingData, CompletedWorkout } from '../types';
 import { evaluateQuizResults } from '../data/quiz';
 import { getProgramById } from '../data/programs';
+import { loadState, saveState, parseImport, clearAll } from '../utils/storage';
+import { syncProgramPosition } from '../utils/program';
+import { applyPersonalRecords, progressMetricsFrom } from '../utils/stats';
 
 // Main app state hook
+const prefersDark = (): boolean =>
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+
 export const useAppState = () => {
-  const [state, setState] = useState<AppState>({
-    currentView: 'dashboard',
-    isOnboarding: true,
-    isDarkMode: false,
-    user: null,
-    currentProgram: null,
-    selectedDate: new Date(),
-    isLoading: false,
-    error: null,
+  const [state, setState] = useState<AppState>(() => {
+    const saved = loadState();
+    const program = saved?.currentProgram
+      ? syncProgramPosition(saved.currentProgram, getProgramById(saved.currentProgram.programId))
+      : null;
+    return {
+      currentView: 'dashboard',
+      isOnboarding: !saved?.user,
+      isDarkMode: saved?.isDarkMode ?? prefersDark(),
+      user: saved?.user ?? null,
+      currentProgram: program,
+      selectedDate: new Date(),
+      isLoading: false,
+      error: null,
+    };
   });
+
+  // Salva no navegador sempre que algo relevante muda
+  useEffect(() => {
+    saveState({
+      isDarkMode: state.isDarkMode,
+      user: state.user,
+      currentProgram: state.currentProgram,
+    });
+  }, [state.isDarkMode, state.user, state.currentProgram]);
+
+  // Mensagens de erro somem sozinhas
+  useEffect(() => {
+    if (!state.error) return;
+    const t = window.setTimeout(() => setState(prev => ({ ...prev, error: null })), 5000);
+    return () => window.clearTimeout(t);
+  }, [state.error]);
 
   const updateView = useCallback((view: AppState['currentView']) => {
     setState(prev => ({ ...prev, currentView: view }));
@@ -40,54 +68,107 @@ export const useAppState = () => {
     setState(prev => ({ ...prev, error }));
   }, []);
 
+  const updateUser = useCallback((changes: Partial<Omit<UserProfile, 'id' | 'createdAt'>>) => {
+    setState(prev => (prev.user ? { ...prev, user: { ...prev.user, ...changes } } : prev));
+  }, []);
+
   const completeOnboarding = useCallback((onboardingData: OnboardingData) => {
     const evaluation = evaluateQuizResults(onboardingData.answers);
     const program = getProgramById(evaluation.recommendedProgram);
-    
+    const answerOf = (id: string) => onboardingData.answers.find(a => a.questionId === id)?.answer;
+
     const userProfile: UserProfile = {
       id: crypto.randomUUID(),
-      name: onboardingData.answers.find(a => a.questionId === 'name')?.answer as string || 'Usuário',
+      name: (answerOf('name') as string)?.trim() || 'Usuário',
       level: evaluation.level,
       experienceMonths: evaluation.experienceMonths,
       weeklyAvailability: evaluation.weeklyAvailability,
-      goals: onboardingData.answers.find(a => a.questionId === 'goals')?.answer as string[] || [],
+      goals: (answerOf('goals') as string[]) || [],
       preferences: {
-        preferredSplit: onboardingData.answers.find(a => a.questionId === 'training-split')?.answer as string || '',
-        availableEquipment: onboardingData.answers.find(a => a.questionId === 'equipment')?.answer as string[] || [],
-        timePerSession: getSessionTimeInMinutes(onboardingData.answers.find(a => a.questionId === 'session-duration')?.answer as string)
+        preferredSplit: (answerOf('training-split') as string) || '',
+        availableEquipment: (answerOf('equipment') as string[]) || [],
+        timePerSession: getSessionTimeInMinutes(answerOf('session-duration') as string)
       },
-      bodyWeight: onboardingData.answers.find(a => a.questionId === 'body-weight')?.answer as number || 70,
+      bodyWeight: (answerOf('body-weight') as number) || 70,
       createdAt: new Date()
     };
 
-    if (program) {
-      const currentProgram: CurrentProgram = {
-        id: crypto.randomUUID(),
-        userId: userProfile.id,
-        programId: program.id,
-        currentWeek: 1,
-        currentPhase: program.phases[0].id,
-        currentMesocycle: 1,
-        startDate: new Date(),
-        workouts: [],
-        personalRecords: [],
-        progressMetrics: {
-          totalVolume: [],
-          averageIntensity: [],
-          workoutsCompleted: 0,
-          totalWorkouts: 0,
-          strengthGains: {}
-        }
-      };
-      
-      setState(prev => ({
-        ...prev,
-        user: userProfile,
-        currentProgram,
-        isOnboarding: false,
-        currentView: 'dashboard'
-      }));
+    if (!program) {
+      setState(prev => ({ ...prev, error: 'Não foi possível montar seu programa. Tente novamente.' }));
+      return;
     }
+
+    const currentProgram: CurrentProgram = {
+      id: crypto.randomUUID(),
+      userId: userProfile.id,
+      programId: program.id,
+      currentWeek: 1,
+      currentPhase: program.phases[0].id,
+      currentMesocycle: 1,
+      startDate: new Date(),
+      workouts: [],
+      history: [],
+      personalRecords: [],
+      progressMetrics: {
+        totalVolume: [],
+        averageIntensity: [],
+        workoutsCompleted: 0,
+        totalWorkouts: program.duration * userProfile.weeklyAvailability,
+        strengthGains: {}
+      }
+    };
+
+    setState(prev => ({
+      ...prev,
+      user: userProfile,
+      currentProgram,
+      isOnboarding: false,
+      currentView: 'dashboard'
+    }));
+  }, []);
+
+  /** Registra um treino concluído e atualiza recordes e métricas. Devolve os exercícios com recorde novo. */
+  const completeWorkout = useCallback((workout: CompletedWorkout): string[] => {
+    let broken: string[] = [];
+    setState(prev => {
+      if (!prev.currentProgram) return prev;
+      const prs = applyPersonalRecords(prev.currentProgram.personalRecords, workout);
+      broken = prs.broken;
+      const program: CurrentProgram = {
+        ...prev.currentProgram,
+        history: [...prev.currentProgram.history, workout],
+        personalRecords: prs.records,
+      };
+      program.progressMetrics = progressMetricsFrom(program);
+      return { ...prev, currentProgram: program };
+    });
+    return broken;
+  }, []);
+
+  /** Importa um backup; devolve false se o arquivo for inválido */
+  const importData = useCallback((text: string): boolean => {
+    const data = parseImport(text);
+    if (!data || !data.user) return false;
+    setState(prev => ({
+      ...prev,
+      user: data.user,
+      currentProgram: data.currentProgram,
+      isDarkMode: data.isDarkMode,
+      isOnboarding: false,
+      currentView: 'dashboard',
+    }));
+    return true;
+  }, []);
+
+  const resetAll = useCallback(() => {
+    clearAll();
+    setState(prev => ({
+      ...prev,
+      user: null,
+      currentProgram: null,
+      isOnboarding: true,
+      currentView: 'dashboard',
+    }));
   }, []);
 
   return {
@@ -98,161 +179,66 @@ export const useAppState = () => {
     setCurrentProgram,
     setLoading,
     setError,
-    completeOnboarding
+    updateUser,
+    completeOnboarding,
+    completeWorkout,
+    importData,
+    resetAll
   };
 };
 
-// Progress tracking hook
-export const useProgress = () => {
-  const [progressData, setProgressData] = useState({
-    weeklyVolume: [] as number[],
-    strengthProgress: {} as Record<string, number[]>,
-    bodyWeightProgress: [] as { date: Date; weight: number }[],
-    performanceMetrics: {
-      totalWorkouts: 0,
-      averageIntensity: 0,
-      totalVolume: 0,
-      consistencyRate: 0
-    }
-  });
-
-  const addWorkoutData = useCallback((volume: number, exercises: Record<string, number>) => {
-    setProgressData(prev => ({
-      ...prev,
-      weeklyVolume: [...prev.weeklyVolume, volume],
-      strengthProgress: {
-        ...prev.strengthProgress,
-        ...Object.entries(exercises).reduce((acc, [exerciseId, weight]) => {
-          acc[exerciseId] = [...(prev.strengthProgress[exerciseId] || []), weight];
-          return acc;
-        }, {} as Record<string, number[]>)
-      },
-      performanceMetrics: {
-        ...prev.performanceMetrics,
-        totalWorkouts: prev.performanceMetrics.totalWorkouts + 1,
-        totalVolume: prev.performanceMetrics.totalVolume + volume
-      }
-    }));
-  }, []);
-
-  const addBodyWeightEntry = useCallback((weight: number) => {
-    setProgressData(prev => ({
-      ...prev,
-      bodyWeightProgress: [
-        ...prev.bodyWeightProgress,
-        { date: new Date(), weight }
-      ]
-    }));
-  }, []);
-
-  return {
-    progressData,
-    addWorkoutData,
-    addBodyWeightEntry
-  };
-};
-
-// Timer hook for rest periods
-export const useTimer = () => {
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
+// Cronômetro de descanso: baseado em horário de término, então não "atrasa" com a aba em segundo plano
+export const useTimer = (onFinish?: () => void) => {
+  const [endAt, setEndAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [initialTime, setInitialTime] = useState(0);
+  const finishRef = useRef(onFinish);
+  finishRef.current = onFinish;
 
   useEffect(() => {
-    let interval: number;
-    
-    if (isRunning && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft(time => time - 1);
-      }, 1000);
-    } else if (timeLeft === 0) {
-      setIsRunning(false);
-    }
+    if (endAt === null) return;
+    const id = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(id);
+  }, [endAt]);
 
-    return () => clearInterval(interval);
-  }, [isRunning, timeLeft]);
+  const timeLeft = endAt === null ? 0 : Math.max(0, Math.ceil((endAt - now) / 1000));
+  const isRunning = endAt !== null && timeLeft > 0;
+
+  useEffect(() => {
+    if (endAt !== null && timeLeft === 0) {
+      setEndAt(null);
+      finishRef.current?.();
+    }
+  }, [endAt, timeLeft]);
 
   const startTimer = useCallback((seconds: number) => {
-    setTimeLeft(seconds);
+    const t = Date.now();
+    setNow(t);
     setInitialTime(seconds);
-    setIsRunning(true);
-  }, []);
-
-  const pauseTimer = useCallback(() => {
-    setIsRunning(false);
-  }, []);
-
-  const resumeTimer = useCallback(() => {
-    setIsRunning(true);
+    setEndAt(t + seconds * 1000);
   }, []);
 
   const resetTimer = useCallback(() => {
-    setIsRunning(false);
-    setTimeLeft(0);
+    setEndAt(null);
     setInitialTime(0);
   }, []);
 
   const addTime = useCallback((seconds: number) => {
-    setTimeLeft(prev => prev + seconds);
+    setEndAt(prev => (prev === null ? prev : prev + seconds * 1000));
+    setInitialTime(prev => prev + seconds);
   }, []);
 
-  const formatTime = useCallback((seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }, []);
+  const mins = Math.floor(timeLeft / 60);
+  const secs = timeLeft % 60;
 
   return {
     timeLeft,
     isRunning,
     progress: initialTime > 0 ? ((initialTime - timeLeft) / initialTime) * 100 : 0,
     startTimer,
-    pauseTimer,
-    resumeTimer,
     resetTimer,
     addTime,
-    formatTime: () => formatTime(timeLeft)
-  };
-};
-
-// Local state management for form data
-export const useFormData = <T>(initialData: T) => {
-  const [data, setData] = useState<T>(initialData);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const updateField = useCallback(<K extends keyof T>(field: K, value: T[K]) => {
-    setData(prev => ({ ...prev, [field]: value }));
-    // Clear error for this field when updated
-    if (errors[field as string]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field as string];
-        return newErrors;
-      });
-    }
-  }, [errors]);
-
-  const setFieldError = useCallback((field: string, error: string) => {
-    setErrors(prev => ({ ...prev, [field]: error }));
-  }, []);
-
-  const clearErrors = useCallback(() => {
-    setErrors({});
-  }, []);
-
-  const resetForm = useCallback(() => {
-    setData(initialData);
-    setErrors({});
-  }, [initialData]);
-
-  return {
-    data,
-    errors,
-    updateField,
-    setFieldError,
-    clearErrors,
-    resetForm,
-    hasErrors: Object.keys(errors).length > 0
+    formatted: `${mins}:${secs.toString().padStart(2, '0')}`
   };
 };
 

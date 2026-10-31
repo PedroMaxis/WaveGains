@@ -1,30 +1,59 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { useAppState } from './hooks';
+import { workoutsThisWeek } from './utils/stats';
 
-// Components
-import Onboarding from './components/Onboarding.tsx';
-import Dashboard from './components/Dashboard.tsx';
-import Sidebar from './components/Sidebar.tsx';
-import Header from './components/Header.tsx';
-import ProgramView from './components/ProgramView.tsx';
-import WorkoutView from './components/WorkoutView.tsx';
-import HistoryView from './components/HistoryView.tsx';
-import CalculatorsView from './components/CalculatorsView.tsx';
-import SettingsView from './components/SettingsView.tsx';
+// Tela de entrada e estrutura ficam no pacote principal; as demais telas carregam sob demanda
+import Onboarding from './components/Onboarding';
+import Sidebar from './components/Sidebar';
+import Header from './components/Header';
+
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const ProgramView = lazy(() => import('./components/ProgramView'));
+const WorkoutView = lazy(() => import('./components/WorkoutView'));
+const HistoryView = lazy(() => import('./components/HistoryView'));
+const CalculatorsView = lazy(() => import('./components/CalculatorsView'));
+const SettingsView = lazy(() => import('./components/SettingsView'));
+
+const ViewFallback = () => (
+  <div className="flex items-center justify-center py-24" role="status" aria-label="Carregando">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+  </div>
+);
 
 function App() {
-  const { state, updateView, toggleDarkMode, completeOnboarding } = useAppState();
+  const {
+    state,
+    updateView,
+    toggleDarkMode,
+    updateUser,
+    completeOnboarding,
+    completeWorkout,
+    importData,
+    resetAll,
+  } = useAppState();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Apply dark mode class to document
-    if (state.isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', state.isDarkMode);
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', state.isDarkMode ? '#0f172a' : '#f9fafb');
   }, [state.isDarkMode]);
 
-  // Show onboarding if user hasn't completed it
+  const changeView = (view: typeof state.currentView) => {
+    updateView(view);
+    setMenuOpen(false);
+    window.scrollTo({ top: 0 });
+  };
+
+  // Fecha o menu mobile com Esc
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
   if (state.isOnboarding || !state.user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-dark-900 dark:to-dark-800">
@@ -33,89 +62,68 @@ function App() {
     );
   }
 
-  // Main app layout
+  const { user, currentProgram } = state;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-900 flex">
-      {/* Sidebar */}
-      <Sidebar 
+      <Sidebar
         currentView={state.currentView}
-        onViewChange={updateView}
-        user={state.user}
+        onViewChange={changeView}
+        user={user}
+        weeklyDone={workoutsThisWeek(currentProgram?.history ?? [])}
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
       />
-      
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <Header 
-          user={state.user}
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <Header
+          user={user}
           isDarkMode={state.isDarkMode}
           onToggleDarkMode={toggleDarkMode}
-          currentProgram={state.currentProgram}
+          currentProgram={currentProgram}
+          onOpenMenu={() => setMenuOpen(true)}
+          onViewChange={changeView}
         />
-        
-        {/* Main Content Area */}
-        <main className="flex-1 p-6">
-          {state.currentView === 'dashboard' && (
-            <Dashboard 
-              currentProgram={state.currentProgram}
-              onViewChange={updateView}
-            />
-          )}
-          
-          {state.currentView === 'program' && (
-            <ProgramView 
-              user={state.user}
-              currentProgram={state.currentProgram}
-            />
-          )}
-          
-          {state.currentView === 'workout' && (
-            <WorkoutView 
-              user={state.user}
-              currentProgram={state.currentProgram}
-            />
-          )}
-          
-          {state.currentView === 'history' && (
-            <HistoryView 
-              user={state.user}
-              currentProgram={state.currentProgram}
-            />
-          )}
-          
-          {state.currentView === 'calculators' && (
-            <CalculatorsView />
-          )}
-          
-          {state.currentView === 'settings' && (
-            <SettingsView 
-              user={state.user}
-              isDarkMode={state.isDarkMode}
-              onToggleDarkMode={toggleDarkMode}
-            />
-          )}
+
+        <main className="flex-1 p-4 sm:p-6">
+          <Suspense fallback={<ViewFallback />}>
+            {state.currentView === 'dashboard' && (
+              <Dashboard user={user} currentProgram={currentProgram} onViewChange={changeView} />
+            )}
+            {state.currentView === 'program' && <ProgramView user={user} currentProgram={currentProgram} />}
+            {state.currentView === 'workout' && (
+              <WorkoutView
+                user={user}
+                currentProgram={currentProgram}
+                onComplete={completeWorkout}
+                onViewChange={changeView}
+              />
+            )}
+            {state.currentView === 'history' && (
+              <HistoryView user={user} currentProgram={currentProgram} onViewChange={changeView} />
+            )}
+            {state.currentView === 'calculators' && <CalculatorsView />}
+            {state.currentView === 'settings' && (
+              <SettingsView
+                user={user}
+                currentProgram={currentProgram}
+                isDarkMode={state.isDarkMode}
+                onToggleDarkMode={toggleDarkMode}
+                onUpdateUser={updateUser}
+                onImport={importData}
+                onReset={resetAll}
+              />
+            )}
+          </Suspense>
         </main>
       </div>
-      
-      {/* Loading Overlay */}
-      {state.isLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-dark-800 rounded-lg p-6 flex items-center space-x-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
-            <span className="text-gray-900 dark:text-gray-100">Carregando...</span>
-          </div>
-        </div>
-      )}
-      
-      {/* Error Toast */}
+
       {state.error && (
-        <div className="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-up">
-          <div className="flex items-center space-x-2">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            <span>{state.error}</span>
-          </div>
+        <div
+          role="alert"
+          className="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-up"
+        >
+          {state.error}
         </div>
       )}
     </div>

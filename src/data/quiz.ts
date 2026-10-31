@@ -1,4 +1,4 @@
-import type { QuizQuestion } from '../types';
+import type { QuizAnswer, QuizQuestion } from '../types';
 
 export const onboardingQuestions: QuizQuestion[] = [
   {
@@ -136,10 +136,14 @@ export const onboardingQuestions: QuizQuestion[] = [
   }
 ];
 
-export const evaluateQuizResults = (answers: any[]) => {
-  const experienceAnswer = answers.find(a => a.questionId === 'experience')?.answer;
-  const availabilityAnswer = answers.find(a => a.questionId === 'availability')?.answer;
-  const knowledgeAnswer = answers.find(a => a.questionId === 'periodization-knowledge')?.answer;
+export const evaluateQuizResults = (answers: QuizAnswer[]) => {
+  const textOf = (id: string): string => {
+    const answer = answers.find(a => a.questionId === id)?.answer;
+    return typeof answer === 'string' ? answer : '';
+  };
+  const experienceAnswer = textOf('experience');
+  const availabilityAnswer = textOf('availability');
+  const knowledgeAnswer = textOf('periodization-knowledge');
   
   // Determine experience level
   let level: 'beginner' | 'intermediate' | 'advanced' = 'beginner';
@@ -154,8 +158,9 @@ export const evaluateQuizResults = (answers: any[]) => {
   
   // Adjust based on knowledge
   if (knowledgeAnswer?.includes('Nunca ouvi falar') || knowledgeAnswer?.includes('superficialmente')) {
+    // rebaixa apenas um degrau (antes o "if" duplo derrubava avançado direto para iniciante)
     if (level === 'advanced') level = 'intermediate';
-    if (level === 'intermediate') level = 'beginner';
+    else if (level === 'intermediate') level = 'beginner';
   }
   
   // Recommend program based on level and availability

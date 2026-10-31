@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Calculator, Zap, TrendingUp } from 'lucide-react';
 import { calculateOneRM, getRPEFromPercentage, getPercentageFromRPE } from '../utils/calculations';
+import type { OneRMResult } from '../types';
 
 const CalculatorsView = () => {
   const [activeTab, setActiveTab] = useState<'1rm' | 'rpe' | 'volume'>('1rm');
@@ -66,7 +67,7 @@ const CalculatorsView = () => {
 const OneRMCalculator = () => {
   const [weight, setWeight] = useState<number>(100);
   const [reps, setReps] = useState<number>(5);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<OneRMResult | null>(null);
 
   const handleCalculate = () => {
     const oneRMResult = calculateOneRM(weight, reps);
