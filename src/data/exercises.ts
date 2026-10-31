@@ -189,6 +189,230 @@ export const exercises: Exercise[] = [
       'Empurre o corpo de volta à posição inicial',
       'Mantenha o tronco ligeiramente inclinado'
     ]
+  },
+  {
+    id: 'incline-dumbbell-press',
+    name: 'Supino Inclinado com Halteres',
+    category: 'chest' as MuscleGroup,
+    type: 'compound',
+    equipment: ['dumbbells', 'incline-bench'],
+    difficulty: 'beginner',
+    instructions: [
+      'Ajuste o banco entre 30 e 45 graus',
+      'Comece com os halteres na altura do peito',
+      'Empurre para cima sem bater os halteres no topo',
+      'Desça devagar, controlando a carga'
+    ]
+  },
+  {
+    id: 'push-ups',
+    name: 'Flexão de Braço',
+    category: 'chest' as MuscleGroup,
+    type: 'compound',
+    equipment: ['bodyweight'],
+    difficulty: 'beginner',
+    instructions: [
+      'Mãos um pouco mais afastadas que os ombros',
+      'Corpo alinhado da cabeça aos calcanhares',
+      'Desça até o peito quase tocar o chão',
+      'Empurre o chão sem perder o alinhamento'
+    ]
+  },
+  {
+    id: 'lat-pulldown',
+    name: 'Puxada Frontal',
+    category: 'back' as MuscleGroup,
+    type: 'compound',
+    equipment: ['cable'],
+    difficulty: 'beginner',
+    instructions: [
+      'Pegada um pouco mais larga que os ombros',
+      'Peito aberto e tronco levemente inclinado',
+      'Puxe a barra até a altura do queixo',
+      'Retorne devagar, sem soltar o peso'
+    ]
+  },
+  {
+    id: 'seated-cable-row',
+    name: 'Remada Sentada na Polia',
+    category: 'back' as MuscleGroup,
+    type: 'compound',
+    equipment: ['cable'],
+    difficulty: 'beginner',
+    instructions: [
+      'Sente com a coluna neutra e os joelhos levemente flexionados',
+      'Puxe o triângulo em direção ao abdômen',
+      'Aproxime as escápulas no final do movimento',
+      'Estenda os braços com controle'
+    ]
+  },
+  {
+    id: 'dumbbell-shoulder-press',
+    name: 'Desenvolvimento com Halteres',
+    category: 'shoulders' as MuscleGroup,
+    type: 'compound',
+    equipment: ['dumbbells'],
+    difficulty: 'beginner',
+    instructions: [
+      'Sentado, com os halteres na altura das orelhas',
+      'Empurre para cima até quase estender os cotovelos',
+      'Mantenha o abdômen firme',
+      'Desça de forma controlada'
+    ]
+  },
+  {
+    id: 'face-pull',
+    name: 'Face Pull',
+    category: 'shoulders' as MuscleGroup,
+    type: 'isolation',
+    equipment: ['cable'],
+    difficulty: 'beginner',
+    instructions: [
+      'Polia na altura do rosto com corda',
+      'Puxe em direção ao rosto abrindo os cotovelos',
+      'Pause por um segundo com as escápulas unidas',
+      'Retorne devagar'
+    ]
+  },
+  {
+    id: 'triceps-pushdown',
+    name: 'Tríceps na Polia',
+    category: 'arms' as MuscleGroup,
+    type: 'isolation',
+    equipment: ['cable'],
+    difficulty: 'beginner',
+    instructions: [
+      'Cotovelos colados ao corpo',
+      'Estenda os braços até o fim sem mover os ombros',
+      'Contraia o tríceps por um segundo',
+      'Suba devagar até 90 graus de flexão'
+    ]
+  },
+  {
+    id: 'hammer-curl',
+    name: 'Rosca Martelo',
+    category: 'arms' as MuscleGroup,
+    type: 'isolation',
+    equipment: ['dumbbells'],
+    difficulty: 'beginner',
+    instructions: [
+      'Palmas voltadas uma para a outra',
+      'Cotovelos fixos ao lado do corpo',
+      'Suba até a altura dos ombros',
+      'Desça sem balançar o tronco'
+    ]
+  },
+  {
+    id: 'romanian-deadlift',
+    name: 'Levantamento Terra Romeno',
+    category: 'legs' as MuscleGroup,
+    type: 'compound',
+    equipment: ['barbell'],
+    difficulty: 'intermediate',
+    instructions: [
+      'Joelhos levemente flexionados e coluna neutra',
+      'Leve o quadril para trás, deslizando a barra pelas coxas',
+      'Desça até sentir o posterior alongar',
+      'Volte estendendo o quadril, sem hiperestender a lombar'
+    ]
+  },
+  {
+    id: 'lunges',
+    name: 'Avanço com Halteres',
+    category: 'legs' as MuscleGroup,
+    type: 'compound',
+    equipment: ['dumbbells'],
+    difficulty: 'beginner',
+    instructions: [
+      'Passo largo à frente, tronco ereto',
+      'Desça até o joelho de trás quase tocar o chão',
+      'Empurre pelo calcanhar da frente para voltar',
+      'Alterne as pernas mantendo o equilíbrio'
+    ]
+  },
+  {
+    id: 'leg-curl',
+    name: 'Mesa Flexora',
+    category: 'legs' as MuscleGroup,
+    type: 'isolation',
+    equipment: ['machine'],
+    difficulty: 'beginner',
+    instructions: [
+      'Ajuste o apoio logo acima dos calcanhares',
+      'Flexione os joelhos sem tirar o quadril do banco',
+      'Contraia no topo por um segundo',
+      'Estenda devagar'
+    ]
+  },
+  {
+    id: 'leg-extension',
+    name: 'Cadeira Extensora',
+    category: 'legs' as MuscleGroup,
+    type: 'isolation',
+    equipment: ['machine'],
+    difficulty: 'beginner',
+    instructions: [
+      'Ajuste o encosto para os joelhos alinharem com o eixo',
+      'Estenda as pernas sem chutar',
+      'Pause no topo contraindo o quadríceps',
+      'Desça de forma controlada'
+    ]
+  },
+  {
+    id: 'calf-raise',
+    name: 'Panturrilha em Pé',
+    category: 'legs' as MuscleGroup,
+    type: 'isolation',
+    equipment: ['machine', 'bodyweight'],
+    difficulty: 'beginner',
+    instructions: [
+      'Apoie a ponta dos pés em um degrau',
+      'Suba o máximo que conseguir',
+      'Pause em cima por um segundo',
+      'Desça até alongar bem o calcanhar'
+    ]
+  },
+  {
+    id: 'hip-thrust',
+    name: 'Elevação de Quadril',
+    category: 'glutes' as MuscleGroup,
+    type: 'compound',
+    equipment: ['barbell', 'bench'],
+    difficulty: 'beginner',
+    instructions: [
+      'Costas apoiadas no banco e barra sobre o quadril',
+      'Pés firmes, joelhos a 90 graus no topo',
+      'Suba o quadril contraindo os glúteos',
+      'Desça sem perder a tensão'
+    ]
+  },
+  {
+    id: 'plank',
+    name: 'Prancha',
+    category: 'core' as MuscleGroup,
+    type: 'isolation',
+    equipment: ['bodyweight'],
+    difficulty: 'beginner',
+    instructions: [
+      'Apoie antebraços e pontas dos pés',
+      'Corpo reto, sem afundar o quadril',
+      'Contraia abdômen e glúteos',
+      'Respire normalmente durante o tempo'
+    ]
+  },
+  {
+    id: 'cable-crunch',
+    name: 'Abdominal na Polia',
+    category: 'core' as MuscleGroup,
+    type: 'isolation',
+    equipment: ['cable'],
+    difficulty: 'beginner',
+    instructions: [
+      'Ajoelhado, com a corda junto à cabeça',
+      'Flexione o tronco aproximando as costelas do quadril',
+      'Não puxe com os braços',
+      'Volte devagar mantendo a tensão'
+    ]
   }
 ];
 

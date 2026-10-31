@@ -4,7 +4,7 @@
 
 This is a React TypeScript application for hypertrophy periodization training programs. The project uses:
 
-- **Framework**: React 18 with TypeScript
+- **Framework**: React 19 with TypeScript
 - **Styling**: Tailwind CSS with custom design system
 - **Icons**: Lucide React
 - **Charts**: Recharts for data visualization
